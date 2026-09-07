@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevTracker.cs - Habit Tracker para Ciência da Computação</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        devDark: '#0b0f19',
+                        devCard: '#111827',
+                        devBorder: '#1f293d',
+                        devAccent: '#10b981',
+                        devCyan: '#06b6d4',
+                        devPurple: '#8b5cf6',
+                    },
+                    fontFamily: {
+                        mono: ['Fira Code', 'JetBrains Mono', 'monospace'],
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #e2e8f0;
+        }
+        .font-code {
+            font-family: 'Fira Code', monospace;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1f293d;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #374151;
+        }
+        .glow-emerald {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
+        }
+        .glow-cyan {
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.15);
+        }
+        .habit-card {
+            transition: all 0.2s ease-in-out;
+        }
+        .habit-card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-devAccent selection:text-black">
+
+    <div id="app" class="container mx-auto px-4 py-6 max-w-5xl">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 border-b border-devBorder pb-6">
+            <div>
+                <div class="flex items-center gap-3 mb-1">
+                    <div class="bg-devAccent/10 border border-devAccent/30 p-2 rounded-xl text-devAccent">
+                        <i data-lucide="terminal" class="w-6 h-6"></i>
+                    </div>
+                    <h1 class="text-2xl md:text-3xl font-bold font-code text-white tracking-tight">
+                        DevTracker<span class="text-devAccent">.cs</span>
+                    </h1>
+                </div>
+                <p class="text-xs md:text-sm text-gray-400 font-code">
+                    // Habits Manager para Devs (1º ao 3º Período)
+                </p>
+            </div>
+
+            <!-- Date & Dev Level Badge -->
+            <div class="flex items-center gap-3">
+                <div class="bg-devCard border border-devBorder px-4 py-2 rounded-xl text-right">
+                    <div id="current-date" class="text-xs text-gray-400 capitalize font-mono">--/--/----</div>
+                    <div id="dev-rank-badge" class="text-xs font-bold font-code text-devCyan flex items-center gap-1 justify-end">
+                        <i data-lucide="award" class="w-3.5 h-3.5"></i>
+                        <span id="rank-title">Junior Dev</span>
+                    </div>
+                </div>
+                <button id="btn-open-modal" class="bg-devAccent hover:bg-emerald-600 text-black font-semibold font-code px-4 py-2.5 rounded-xl transition flex items-center gap-2 text-sm shadow-lg shadow-devAccent/20">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>Novo Hábito</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Dashboard / Progress Bar -->
+        <section class="bg-devCard border border-devBorder rounded-2xl p-6 mb-8 glow-emerald">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white font-code flex items-center gap-2">
+                        <i data-lucide="activity" class="w-5 h-5 text-devAccent"></i>
+                        Progresso Diário
+                    </h2>
+                    <p id="progress-subtitle" class="text-xs text-gray-400">Você concluiu 0 de 0 tarefas de hoje</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                        <span id="progress-percent" class="text-3xl font-extrabold font-code text-devAccent">0%</span>
+                    </div>
+                    <div class="bg-devDark/60 border border-devBorder px-3 py-1.5 rounded-lg text-center min-w-[90px]">
+                        <div class="text-[10px] text-gray-400 uppercase font-mono tracking-wider">Sequência</div>
+                        <div id="streak-counter" class="text-sm font-bold font-code text-amber-400 flex items-center justify-center gap-1">
+                            🔥 <span>0 d</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Bar Bar -->
+            <div class="w-full bg-devDark rounded-full h-3.5 p-0.5 border border-devBorder overflow-hidden">
+                <div id="progress-bar-fill" class="bg-gradient-to-r from-devCyan to-devAccent h-full rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+            </div>
+        </section>
+
+        <!-- Controls & Categories Tabs -->
+        <section class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6">
+            <!-- Tabs -->
+            <nav class="flex items-center gap-1 bg-devCard border border-devBorder p-1.5 rounded-xl overflow-x-auto no-scrollbar">
+                <button data-tab="Todos" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold font-code transition text-white bg-devBorder">
+                    Todos
+                </button>
+                <button data-tab="Acadêmico" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold font-code transition text-gray-400 hover:text-white">
+                    🎓 Acadêmico
+                </button>
+                <button data-tab="Projetos Pessoais" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold font-code transition text-gray-400 hover:text-white">
+                    🚀 Projetos
+                </button>
+                <button data-tab="Saúde & Bem-Estar" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold font-code transition text-gray-400 hover:text-white">
+                    🧘 Saúde
+                </button>
+            </nav>
+
+            <!-- Search Input -->
+            <div class="relative w-full sm:w-64">
+                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="search-input" placeholder="Buscar hábito..." class="w-full bg-devCard border border-devBorder text-sm rounded-xl pl-9 pr-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-devAccent transition font-code">
+            </div>
+        </section>
+
+        <!-- Habits List -->
+        <main>
+            <div id="habits-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Dynamic cards injected via JS -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden text-center py-16 bg-devCard/40 border border-dashed border-devBorder rounded-2xl">
+                <div class="bg-devDark/80 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-500">
+                    <i data-lucide="code-2" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-base font-semibold text-gray-300 font-code">Nenhum hábito encontrado</h3>
+                <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                    Não existem hábitos para a categoria selecionada ou busca. Crie um novo hábito acima para começar!
+                </p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal: Add New Habit -->
+    <div id="modal-add-habit" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-devCard border border-devBorder rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+            <button id="btn-close-modal" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <div class="flex items-center gap-2 mb-4">
+                <div class="p-2 bg-devAccent/10 text-devAccent rounded-lg">
+                    <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                </div>
+                <h3 class="text-lg font-bold font-code text-white">Adicionar Novo Hábito</h3>
+            </div>
+
+            <form id="form-add-habit" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-mono uppercase text-gray-400 mb-1">Título do Hábito</label>
+                    <input type="text" id="input-title" required placeholder="Ex: Resolver 1 LeetCode Easy" class="w-full bg-devDark border border-devBorder text-sm rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-devAccent font-code">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono uppercase text-gray-400 mb-1">Categoria</label>
+                    <select id="input-category" class="w-full bg-devDark border border-devBorder text-sm rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-devAccent font-code">
+                        <option value="Acadêmico">🎓 Acadêmico</option>
+                        <option value="Projetos Pessoais">🚀 Projetos Pessoais</option>
+                        <option value="Saúde & Bem-Estar">🧘 Saúde & Bem-Estar</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono uppercase text-gray-400 mb-1">Relevância / Período Sugerido</label>
+                    <select id="input-period" class="w-full bg-devDark border border-devBorder text-sm rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-devAccent font-code">
+                        <option value="1º ao 3º Período">1º ao 3º Período (Geral)</option>
+                        <option value="1º Período">1º Período (Fundamentos)</option>
+                        <option value="2º Período">2º Período (Estruturas de Dados)</option>
+                        <option value="3º Período">3º Período (Algoritmos Avançados)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono uppercase text-gray-400 mb-1">Descrição Curta (Opcional)</label>
+                    <textarea id="input-desc" rows="2" placeholder="Ex: Focar em arrays ou linked lists..." class="w-full bg-devDark border border-devBorder text-sm rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-devAccent font-code"></textarea>
+                </div>
+
+                <div class="pt-2 flex items-center justify-end gap-3">
+                    <button type="button" id="btn-cancel-modal" class="px-4 py-2 rounded-xl text-xs font-semibold text-gray-400 hover:text-white font-code">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="bg-devAccent hover:bg-emerald-600 text-black px-4 py-2 rounded-xl text-xs font-bold font-code transition shadow-lg shadow-devAccent/20">
+                        Salvar Hábito
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 bg-devCard border border-devAccent text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 transition-all duration-300 transform translate-y-20 opacity-0 pointer-events-none font-code text-xs">
+        <i data-lucide="check-circle" class="w-4 h-4 text-devAccent"></i>
+        <span id="toast-message">Ação realizada com sucesso!</span>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-12 border-t border-devBorder py-6 text-center text-xs text-gray-500 font-mono">
+        <p>DevTracker.cs &copy; 2026 — Focado na jornada do dev do 1º ao 3º Período.</p>
+    </footer>
+
+    <script>
+        // Default Habit Templates tailored for Computer Science students (1st - 3rd period)
+        const DEFAULT_HABITS = [
+            {
+                id: 'hab-1',
+                title: 'Resolver 1 problema de lógica / LeetCode',
+                category: 'Acadêmico',
+                period: '1º ao 3º Período',
+                desc: 'Fortalecer lógica de programação e resolução de problemas básicos.',
+                icon: 'code-2',
+                history: {},
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'hab-2',
+                title: 'Fazer pelo menos 1 commit no GitHub',
+                category: 'Projetos Pessoais',
+                period: '1º ao 3º Período',
+                desc: 'Manter a constância do verde no perfil e praticar controle de versão com Git.',
+                icon: 'git-commit',
+                history: {},
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'hab-3',
+                title: 'Revisar Estruturas de Dados / Algoritmos',
+                category: 'Acadêmico',
+                period: '2º Período',
+                desc: 'Praticar Ponteiros, Arrays, Listas Encadeadas, Pilhas ou Filas.',
+                icon: 'cpu',
+                history: {},
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'hab-4',
+                title: 'Estudar 30 min da Linguagem Base (C / C++ / Python)',
+                category: 'Acadêmico',
+                period: '1º Período',
+                desc: 'Ler documentação ou sintetizar conceitos da matéria da faculdade.',
+                icon: 'book-open',
+                history: {},
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'hab-5',
+                title: 'Avançar em Projeto Pessoal ou Portfólio',
+                category: 'Projetos Pessoais',
+                period: '2º ao 3º Período',
+                desc: 'Desenvolver um script, app web simples ou projeto de estudos.',
+                icon: 'rocket',
+                history: {},
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'hab-6',
+                title: 'Fazer pausas ativas (Técnica Pomodoro)',
+                category: 'Saúde & Bem-Estar',
+                period: '1º ao 3º Período',
+                desc: 'Evitar ficar mais de 1h direto sentado sem levantar e descansas os olhos.',
+                icon: 'timer',
+                history: {},
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'hab-7',
+                title: 'Exercício Físico ou Alongamento (30 min)',
+                category: 'Saúde & Bem-Estar',
+                period: '1º ao 3º Período',
+                desc: 'Prevenir dores de postura e manter a saúde física em dia.',
+                icon: 'activity',
+                history: {},
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'hab-8',
+                title: 'Beber 2L de água durante os estudos',
+                category: 'Saúde & Bem-Estar',
+                period: '1º ao 3º Período',
+                desc: 'Hidratação constante para manter o foco e raciocínio limpo.',
+                icon: 'droplet',
+                history: {},
+                createdAt: new Date().toISOString()
+            }
+        ];
+
+        const STORAGE_KEY = 'DEV_TRACKER_CS_HABITS';
+        
+        let habits = [];
+        let currentTab = 'Todos';
+        let searchQuery = '';
+
+        // Helper: Get today formatted YYYY-MM-DD
+        function getTodayKey() {
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Helper: Format Date for Display
+        function formatDisplayDate() {
+            const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            const dateStr = new Date().toLocaleDateString('pt-BR', options);
+            document.getElementById('current-date').textContent = dateStr;
+        }
+
+        // Save to LocalStorage
+        function saveState() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(habits));
+            updateDashboard();
+        }
+
+        // Load from LocalStorage
+        function loadState() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    habits = JSON.parse(saved);
+                } catch (e) {
+                    console.error('Failed to parse local storage', e);
+                    habits = [...DEFAULT_HABITS];
+                }
+            } else {
+                habits = [...DEFAULT_HABITS];
+            }
+            saveState();
+        }
+
+        // Show Toast Notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            toastMsg.textContent = message;
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            }, 2500);
+        }
+
+        // Calculate Streaks
+        function calculateStreak() {
+            const today = getTodayKey();
+            let maxConsecutive = 0;
+            
+            // Calculate consecutive days completed across all habits
+            let currentDay = new Date();
+            let streak = 0;
+
+            for (let i = 0; i < 30; i++) {
+                const dateKey = currentDay.toISOString().split('T')[0];
+                const totalHabits = habits.length;
+                if (totalHabits === 0) break;
+
+                const completedOnDay = habits.filter(h => h.history && h.history[dateKey]).length;
+                
+                // If today and 0 completed, keep checking yesterday before breaking streak
+                if (i === 0 && completedOnDay === 0) {
+                    currentDay.setDate(currentDay.getDate() - 1);
+                    continue;
+                }
+
+                if (completedOnDay > 0 && completedOnDay >= Math.ceil(totalHabits * 0.5)) {
+                    streak++;
+                    currentDay.setDate(currentDay.getDate() - 1);
+                } else {
+                    break;
+                }
+            }
+            return streak;
+        }
+
+        // Update Dashboard Stats & Rank
+        function updateDashboard() {
+            const today = getTodayKey();
+            const total = habits.length;
+            const completed = habits.filter(h => h.history && h.history[today]).length;
+            
+            const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+            // Update UI elements
+            document.getElementById('progress-percent').textContent = `${percent}%`;
+            document.getElementById('progress-subtitle').textContent = `Você concluiu ${completed} de ${total} tarefas de hoje`;
+            document.getElementById('progress-bar-fill').style.width = `${percent}%`;
+
+            // Streaks
+            const streak = calculateStreak();
+            document.getElementById('streak-counter').innerHTML = `🔥 <span>${streak} d</span>`;
+
+            // Dev Rank based on total completions & streak
+            const rankTitleEl = document.getElementById('rank-title');
+            if (percent === 100 && total > 0) {
+                rankTitleEl.textContent = 'Compiler Wizard ⚡';
+            } else if (percent >= 75) {
+                rankTitleEl.textContent = 'Algorithm Ace 🚀';
+            } else if (percent >= 40) {
+                rankTitleEl.textContent = 'Code Ninja 💻';
+            } else {
+                rankTitleEl.textContent = 'Junior Dev 🐍';
+            }
+
+            // Confetti Trigger on 100%
+            if (percent === 100 && total > 0 && !window.hasCelebratedToday) {
+                triggerConfetti();
+                window.hasCelebratedToday = true;
+            } else if (percent < 100) {
+                window.hasCelebratedToday = false;
+            }
+        }
+
+        // Confetti Visual Effect
+        function triggerConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 80,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#10b981', '#06b6d4', '#8b5cf6', '#f59e0b']
+                });
+            }
+        }
+
+        // Render Habits List
+        function renderHabits() {
+            const container = document.getElementById('habits-list');
+            const emptyState = document.getElementById('empty-state');
+            const today = getTodayKey();
+
+            // Filter habits based on tab & search
+            const filtered = habits.filter(habit => {
+                const matchesTab = currentTab === 'Todos' || habit.category === currentTab;
+                const matchesSearch = habit.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                      (habit.desc && habit.desc.toLowerCase().includes(searchQuery.toLowerCase()));
+                return matchesTab && matchesSearch;
+            });
+
+            container.innerHTML = '';
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filtered.forEach(habit => {
+                const isChecked = !!(habit.history && habit.history[today]);
+                
+                // Category badge styling
+                let categoryColor = 'bg-blue-500/10 text-blue-400 border-blue-500/30';
+                if (habit.category === 'Projetos Pessoais') {
+                    categoryColor = 'bg-purple-500/10 text-purple-400 border-purple-500/30';
+                } else if (habit.category === 'Saúde & Bem-Estar') {
+                    categoryColor = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+                }
+
+                const card = document.createElement('div');
+                card.className = `habit-card bg-devCard border ${isChecked ? 'border-devAccent/50 bg-devAccent/[0.02]' : 'border-devBorder'} rounded-2xl p-4 flex flex-col justify-between gap-3 relative group`;
+
+                card.innerHTML = `
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex items-start gap-3">
+                            <button onclick="toggleHabit('${habit.id}')" class="mt-0.5 w-6 h-6 rounded-lg border ${isChecked ? 'bg-devAccent border-devAccent text-black' : 'border-gray-600 bg-devDark hover:border-devAccent'} flex items-center justify-center transition flex-shrink-0">
+                                ${isChecked ? '<i data-lucide="check" class="w-4 h-4 stroke-[3]"></i>' : ''}
+                            </button>
+                            <div>
+                                <h4 class="text-sm font-semibold text-white font-code ${isChecked ? 'line-through text-gray-400' : ''}">
+                                    ${habit.title}
+                                </h4>
+                                ${habit.desc ? `<p class="text-xs text-gray-400 mt-1">${habit.desc}</p>` : ''}
+                            </div>
+                        </div>
+                        <button onclick="deleteHabit('${habit.id}')" class="text-gray-500 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition p-1 rounded-lg hover:bg-rose-500/10" title="Excluir hábito">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-2 border-t border-devBorder/50 text-[11px]">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded-md border text-[10px] font-mono ${categoryColor}">
+                                ${habit.category}
+                            </span>
+                            <span class="text-gray-500 font-mono">
+                                ${habit.period || '1º ao 3º Período'}
+                            </span>
+                        </div>
+                        <div class="text-gray-400 font-mono flex items-center gap-1">
+                            <i data-lucide="check-circle-2" class="w-3 h-3 ${isChecked ? 'text-devAccent' : 'text-gray-600'}"></i>
+                            <span>${isChecked ? 'Concluído' : 'Pendente'}</span>
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+
+            // Re-render lucide icons
+            lucide.createIcons();
+        }
+
+        // Toggle Habit Status for Today
+        function toggleHabit(id) {
+            const today = getTodayKey();
+            habits = habits.map(h => {
+                if (h.id === id) {
+                    const newHistory = { ...(h.history || {}) };
+                    if (newHistory[today]) {
+                        delete newHistory[today];
+                    } else {
+                        newHistory[today] = true;
+                    }
+                    return { ...h, history: newHistory };
+                }
+                return h;
+            });
+
+            saveState();
+            renderHabits();
+        }
+
+        // Delete Habit
+        function deleteHabit(id) {
+            const habitToDelete = habits.find(h => h.id === id);
+            habits = habits.filter(h => h.id !== id);
+            saveState();
+            renderHabits();
+            showToast(`Hábito "${habitToDelete?.title || ''}" removido.`);
+        }
+
+        // Setup Event Listeners
+        function setupEventListeners() {
+            // Modal Open / Close
+            const modal = document.getElementById('modal-add-habit');
+            const btnOpen = document.getElementById('btn-open-modal');
+            const btnClose = document.getElementById('btn-close-modal');
+            const btnCancel = document.getElementById('btn-cancel-modal');
+            const form = document.getElementById('form-add-habit');
+
+            const openModal = () => modal.classList.remove('hidden');
+            const closeModal = () => {
+                modal.classList.add('hidden');
+                form.reset();
+            };
+
+            btnOpen.addEventListener('click', openModal);
+            btnClose.addEventListener('click', closeModal);
+            btnCancel.addEventListener('click', closeModal);
+
+            // Modal Submit Add Habit
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const title = document.getElementById('input-title').value.trim();
+                const category = document.getElementById('input-category').value;
+                const period = document.getElementById('input-period').value;
+                const desc = document.getElementById('input-desc').value.trim();
+
+                if (!title) return;
+
+                const newHabit = {
+                    id: 'hab-' + Date.now(),
+                    title,
+                    category,
+                    period,
+                    desc,
+                    history: {},
+                    createdAt: new Date().toISOString()
+                };
+
+                habits.unshift(newHabit);
+                saveState();
+                renderHabits();
+                closeModal();
+                showToast('Novo hábito adicionado com sucesso!');
+            });
+
+            // Tabs Switcher
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    tabBtns.forEach(b => {
+                        b.classList.remove('bg-devBorder', 'text-white');
+                        b.classList.add('text-gray-400');
+                    });
+                    btn.classList.add('bg-devBorder', 'text-white');
+                    btn.classList.remove('text-gray-400');
+
+                    currentTab = btn.getAttribute('data-tab');
+                    renderHabits();
+                });
+            });
+
+            // Search input
+            const searchInput = document.getElementById('search-input');
+            searchInput.addEventListener('input', (e) => {
+                searchQuery = e.target.value;
+                renderHabits();
+            });
+        }
+
+        // Initialization on window load
+        window.onload = function () {
+            formatDisplayDate();
+            loadState();
+            setupEventListeners();
+            renderHabits();
+            lucide.createIcons();
+        };
+    </script>
+</body>
+</html>
